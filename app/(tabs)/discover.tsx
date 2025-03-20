@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { ActivityIndicator, StyleSheet, FlatList, View, TextInput, TouchableOpacity, Keyboard, Image, Text, ImageBackground, Dimensions } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { ActivityIndicator, StyleSheet, View, TextInput, TouchableOpacity, Keyboard, Image, Text, ImageBackground, Dimensions } from 'react-native';
 import { getUpcomingMovies, getPopularMovies, searchMovies, getTrendingShows, searchShows, image500 } from '@/services/tmdbapi';
 import { router } from 'expo-router';
-import Constants from 'expo-constants';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { debounce } from 'lodash';
+import { FlashList } from '@shopify/flash-list';
 
 interface Movie {
     id: number;
@@ -68,21 +67,18 @@ export const discover = () => {
           try {
             setInitialLoading(true);
             // Fetch multiple categories of movies and TV shows
-            const [upcomingData, popularMovieData, trendingTVData] = await Promise.all([
+            const [upcomingData, popularMovieData] = await Promise.all([
               getUpcomingMovies(),
               getPopularMovies(),
-              getTrendingShows(),
             ]);
     
             // Filter out items with null poster_path to prevent empty URI errors
             const upcomingFiltered = upcomingData.results.filter((movie: Movie) => movie.poster_path != null);
             const popularMoviesFiltered = popularMovieData.results.filter((movie: Movie) => movie.poster_path != null);
-            const trendingTVFiltered = trendingTVData.results.filter((show: TVShow) => show.poster_path != null);
     
             setCategories([
               { title: 'Upcoming Movies', data: upcomingFiltered, type: 'movie' },
               { title: 'Popular Movies', data: popularMoviesFiltered, type: 'movie' },
-              { title: 'Trending TV Shows', data: trendingTVFiltered, type: 'tv' },
             ]);
           } catch (err) {
             console.error('Error fetching media:', err);
@@ -183,15 +179,16 @@ export const discover = () => {
       }
     
       const renderCategory = ({ item }: { item: MediaCategory }) => (
-        <View style={styles.categoryContainer}>
+        <View style={styles.listCard}>
           <Text style={styles.categoryTitle}>{item.title}</Text>
-          <FlatList 
+          <FlashList 
             data={item.data}
             horizontal
             showsHorizontalScrollIndicator={false}
+            estimatedItemSize={174}
             renderItem={({ item: media }) => (
               <TouchableOpacity 
-                style={styles.mediaContainer}
+                style={styles.itemContainer}
                 onPress={() => {
                   if (item.type === 'movie') {
                     handleMoviePress(media.id);
@@ -202,15 +199,13 @@ export const discover = () => {
               >
                 <Image
                   source={{ uri: image500(media.poster_path) || undefined }}
-                  style={styles.posterImage}
+                  style={styles.itemImage}
                   resizeMode="cover"
                 />
-                <Text style={styles.mediaTitle}>{getItemTitle(media)}</Text>
+                <Text style={styles.itemTitle}>{getItemTitle(media)}</Text>
               </TouchableOpacity>
             )}
             keyExtractor={(item) => `${item.id}-${getItemTitle(item)}`}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            contentContainerStyle={styles.listContent}
           />
         </View>
       );
@@ -300,18 +295,18 @@ export const discover = () => {
                 </Text>
                 {searchLoading && <ActivityIndicator size="small" style={styles.searchSpinner} />}
               </View>
-              <FlatList
+              <FlashList
                 data={searchResults}
                 renderItem={renderSearchResult}
                 keyExtractor={(item) => `search-${item.id}`}
                 numColumns={2}
+                estimatedItemSize={265}
                 contentContainerStyle={styles.searchResultsContainer}
-                columnWrapperStyle={styles.searchResultsRow}
                 ItemSeparatorComponent={() => <View style={styles.verticalSeparator} />}
                 ListEmptyComponent={
                   !searchLoading && searchQuery.trim().length >= 2 ? (
                     <View style={styles.noResultsContainer}>
-                      <Icon name="movie-search-outline" size={48} color="white" />
+                      <Icon name="movie-search-outline" size={48} />
                       <Text style={styles.noResultsText}>
                         No {searchType === 'movie' ? 'movies' : 'TV shows'} found
                       </Text>
@@ -321,11 +316,12 @@ export const discover = () => {
               />
             </>
           ) : (
-            <FlatList
+            <FlashList
               data={categories}
               renderItem={renderCategory}
               keyExtractor={(item) => item.title}
               showsVerticalScrollIndicator={false}
+              estimatedItemSize={227}
               ItemSeparatorComponent={() => <View style={styles.categorySeparator} />}
             />
           )}
@@ -363,7 +359,7 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   categorySeparator: {
-    height: 24, // Space between categories
+    height: 16,
   },
   backgroundImage: {
     width: width,
@@ -390,30 +386,53 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
   },
-  categoryContainer: {
-    marginVertical: 16,
+  listCard: {
+    marginVertical: 10,
+    marginHorizontal: 10,
+    padding: 12,
+    backgroundColor: 'transparent',
+    borderRadius: 10,
+    shadowColor: '#7c4bee',
+    shadowOffset: {
+      width: 2,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   categoryTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 12,
-    marginLeft: 8,
+    textAlign: 'center',
+    color: '#fff',
   },
-  mediaContainer: {
-    marginHorizontal: 8,
-    alignItems: 'center',
-    width: 120,
+  itemContainer: {
+    alignItems: "center",
+    marginRight: 10,
+  },
+  itemImage: {
+    width: 100,
+    height: 150,
+    borderRadius: 4,
+  },
+  itemTitle: {
+    textAlign: "center",
+    marginTop: 4,
+    maxWidth: 100,
+    fontSize: 12,
+    color: 'white',
   },
   searchResultItem: {
     marginHorizontal: 8,
     marginVertical: 10,
     alignItems: 'center',
-    width: 120,
+    width: 150,
   },
   posterImage: {
-    width: 120,
-    height: 180,
+    width: 150,
+    height: 225,
     borderRadius: 8,
   },
   mediaTitle: {
@@ -424,10 +443,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   separator: {
-    width: 16,
-  },
-  listContent: {
-    paddingHorizontal: 8,
+    width: 8,
   },
   searchTypeContainer: {
     flexDirection: 'row',
@@ -442,7 +458,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeSearchType: {
-    backgroundColor: '#0066cc',
+    backgroundColor: '#7c4bee',
     
   },
   activeSearchTypeText: {
@@ -457,7 +473,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     height: 50,
-    borderColor: 'white',
+    borderColor: '#7c4bee',
   },
   searchInput: {
     flex: 1,
@@ -467,6 +483,7 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     padding: 8,
+    color: "#7c4bee",
   },
   resultsHeader: {
     flexDirection: 'row',
@@ -477,6 +494,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     flex: 1,
+    color: 'white',
   },
   searchSpinner: {
     marginLeft: 8,

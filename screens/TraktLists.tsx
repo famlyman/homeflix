@@ -121,7 +121,7 @@ const TraktLists = ({ isAuthenticated }: TraktListsProps) => {
         <Text style={styles.listTitle}>{item.name}</Text>
         {item.items && (
           <FlashList
-            estimatedItemSize={200}
+            estimatedItemSize={174}
             data={item.items}
             horizontal
             keyExtractor={(subItem, index) => `${subItem.id}-${subItem.type}-${index}`}
@@ -177,7 +177,7 @@ const TraktLists = ({ isAuthenticated }: TraktListsProps) => {
 
   return (
     <FlashList
-      estimatedItemSize={200}
+      estimatedItemSize={227}
       data={lists}
       renderItem={({ item }) => renderItem({ item })}
       keyExtractor={(item) => item.ids.slug}
@@ -224,14 +224,14 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   itemImage: {
-    width: 60,
-    height: 90,
+    width: 100,
+    height: 150,
     borderRadius: 4,
   },
   itemTitle: {
     textAlign: "center",
     marginTop: 4,
-    maxWidth: 60,
+    maxWidth: 100,
     fontSize: 12,
     color: 'white',
   },
