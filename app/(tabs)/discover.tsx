@@ -50,14 +50,14 @@ export const discover = () => {
 
     const handleMoviePress = (id: number) => {
       router.push({
-        pathname: "/details/[movies]" as "/",
+        pathname: "/movie/[movies]",
         params: { id: id.toString() }
       });
     };
 
     const handleShowPress = (id: number) => {
       router.push({
-        pathname: "/details/[shows]" as "/",
+        pathname: "/show/[shows]",
         params: { id: id.toString() }
       });
     };
@@ -301,7 +301,7 @@ export const discover = () => {
                 keyExtractor={(item) => `search-${item.id}`}
                 numColumns={2}
                 estimatedItemSize={265}
-                contentContainerStyle={styles.searchResultsContainer}
+                contentContainerStyle={{ padding: 16 }}
                 ItemSeparatorComponent={() => <View style={styles.verticalSeparator} />}
                 ListEmptyComponent={
                   !searchLoading && searchQuery.trim().length >= 2 ? (

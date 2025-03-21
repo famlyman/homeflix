@@ -14,7 +14,7 @@ import { addToTraktList, removeFromTraktList } from "../../services/traktapi";
 import * as SecureStore from "expo-secure-store";
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
-
+ 
 
 interface ListItem {
   id: number;
@@ -162,9 +162,15 @@ export default function ListDetailsScreen() {
     <ListItemComponent
       item={item}
       onPress={() =>
-        router.push(
-          `/details/[item]?id=${item.id}&type=${item.type}&title=${encodeURIComponent(item.title)}&listId=${listId}`
-        )
+        router.push({
+          pathname: `/item/[item]`,
+          params: {
+            id: item.id.toString(),
+            type: item.type,
+            title: encodeURIComponent(item.title),
+            listId: listId,
+          },
+        })
       }
       onHeartPress={() => handleHeartPress(item)}
       isInList={itemStatus[item.id] ?? false}
@@ -212,7 +218,7 @@ export default function ListDetailsScreen() {
         data={displayedItems}
         renderItem={renderItem}
         keyExtractor={(item) => `${item.id}-${item.type}`}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={{ padding: 16 }}
         ListFooterComponent={renderFooter}
         onEndReachedThreshold={0.5}
         onEndReached={() => {

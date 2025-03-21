@@ -136,7 +136,7 @@ export default function TvDetailsScreen() {
       : 0;
 
   return (
-    <ScrollView style={[styles.container, { paddingTop: statusBarHeight }]}>
+    <ScrollView style={styles.container}>
       {series.backdrop_path && (
         <Image
           source={{ uri: image500(series.backdrop_path) || '' }}
@@ -152,6 +152,13 @@ export default function TvDetailsScreen() {
           <Icon name="cards-heart" size={30} strokeWidth={2} color={isInList ? 'red' : 'white'} />
         </Pressable>
       </View>
+
+      <View style={styles.detailsBackground}>
+        <Image
+          source={require('@/assets/images/bg.jpg')}
+          style={styles.detailsBackgroundImage}
+          resizeMode="cover"
+        />
 
       <View style={styles.contentContainer}>
         <View style={styles.headerContainer}>
@@ -189,6 +196,7 @@ export default function TvDetailsScreen() {
             )}
           </View>
         </View>
+        </View>
         <View style={styles.overviewContainer}>
           <Text style={styles.overviewTitle}>Overview</Text>
           <Text style={styles.overview}>{series.overview}</Text>
@@ -206,7 +214,7 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 10, fontSize: 16 },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   errorText: { fontSize: 16, textAlign: 'center' },
-  backdropImage: { width: width, height: height * 0.3 },
+  backdropImage: { width: width, height: height * 0.5 },
   backIconContainer: {
     position: 'absolute',
     top: 0,
@@ -219,17 +227,32 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   backIcon: { backgroundColor: 'rgba(0, 0, 0, 0.5)', borderRadius: 50, padding: 5, margin: 5 },
-  contentContainer: { padding: 16 },
   headerContainer: { flexDirection: 'row', marginBottom: 20 },
   posterImage: { width: width * 0.3, height: height * 0.2, borderRadius: 10 },
   infoContainer: { flex: 1, marginLeft: 16, justifyContent: 'center' },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
+  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 8, color: 'white' },
   releaseDate: { fontSize: 14, marginBottom: 4 },
-  rating: { fontSize: 14, marginBottom: 4 },
-  runtime: { fontSize: 14, marginBottom: 4 },
-  seasons: { fontSize: 14, marginBottom: 4 },
-  genres: { fontSize: 14, marginBottom: 4 },
+  rating: { fontSize: 14, marginBottom: 4, color: 'white' },
+  runtime: { fontSize: 14, marginBottom: 4, color: 'white' },
+  seasons: { fontSize: 14, marginBottom: 4, color: 'white' },
+  genres: { fontSize: 14, marginBottom: 4, color: 'white' },
   overviewContainer: { marginTop: 16 },
-  overviewTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
-  overview: { fontSize: 14, lineHeight: 22 },
+  overviewTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8, color: 'white' },
+  overview: { fontSize: 14, lineHeight: 22, color: 'white' },
+  detailsBackground: {
+    position: 'relative',
+    width: '100%',
+    minHeight: height * 0.5,
+  },
+  detailsBackgroundImage: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  contentContainer: { 
+    padding: 16,
+    backgroundColor: 'transparent',
+    position: 'relative',
+    zIndex: 1,
+  },
 });
