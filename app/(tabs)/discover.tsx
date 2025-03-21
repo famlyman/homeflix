@@ -50,14 +50,14 @@ export const discover = () => {
 
     const handleMoviePress = (id: number) => {
       router.push({
-        pathname: "/movie/[id]" as "/",
+        pathname: "/details/[movies]" as "/",
         params: { id: id.toString() }
       });
     };
 
     const handleShowPress = (id: number) => {
       router.push({
-        pathname: "/show/[id]" as "/",
+        pathname: "/details/[shows]" as "/",
         params: { id: id.toString() }
       });
     };
