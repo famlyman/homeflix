@@ -92,7 +92,7 @@ const TraktLists = ({ isAuthenticated }: TraktListsProps) => {
 
   const handleListPress = (list: TraktList) => {
     router.push({
-      pathname: "/lists/list/listdetails" as "/",
+      pathname: "/details/[list]" as "/",
       params: {
         listId: list.ids.trakt.toString(),
         listName: list.name,
@@ -102,7 +102,7 @@ const TraktLists = ({ isAuthenticated }: TraktListsProps) => {
 
   const handleItemPress = (item: ItemDetails) => {
     router.push({
-      pathname: "/lists/items/itemdetails" as "/",
+      pathname: "/details/[item]" as "/",
       params: {
         id: item.id.toString(),
         type: item.type,
