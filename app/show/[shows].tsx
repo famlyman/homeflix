@@ -34,8 +34,8 @@ interface TvDetails {
 }
 
 export default function TvDetailsScreen() {
-  const { id } = useLocalSearchParams();
-  const seriesId = typeof id === 'string' ? parseInt(id, 10) : Array.isArray(id) ? parseInt(id[0], 10) : 0;
+  const { shows } = useLocalSearchParams();
+  const seriesId = typeof shows === 'string' ? parseInt(shows, 10) : Array.isArray(shows) ? parseInt(shows[0], 10) : 0;
   const router = useRouter();
   const [series, setSeries] = useState<TvDetails | null>(null);
   const [loading, setLoading] = useState(true);

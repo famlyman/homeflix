@@ -226,7 +226,7 @@ export default function ItemDetailsScreen() {
                       key={season.season_number}
                       label={`Season ${season.season_number}`}
                       value={season.season_number}
-                      color="white"
+                      color="black"
                     />
                   ))}
                 </Picker>

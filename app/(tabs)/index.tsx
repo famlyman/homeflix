@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { loginWithTrakt, logout, isLoggedIn } from '@/services/traktapi';
 import TraktLists from '../../screens/TraktLists';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '@/services/storage';
 
 const Colors = {
   dark: {
@@ -30,7 +30,7 @@ export default function HomeScreen() {
   const [username, setUsername] = useState<string | null>(null);
 
   const fetchUsername = useCallback(async () => {
-    const storedUsername = await SecureStore.getItemAsync("trakt_username");
+    const storedUsername = await storage.getItem("trakt_username");
     if (storedUsername) {
       setUsername(storedUsername);
     }

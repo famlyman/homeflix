@@ -1,5 +1,5 @@
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
+import { storage } from "./storage";
 import { router } from "expo-router";
 import Constants from "expo-constants";
 
@@ -39,9 +39,7 @@ traktApi.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       try {
-        const refreshToken = await SecureStore.getItemAsync(
-          "trakt_refresh_token"
-        );
+        const refreshToken = await storage.getItem("trakt_refresh_token");
         if (refreshToken) {
           const tokenResponse = await axios.post(
             `${TRAKT_API_URL}/oauth/token`,
@@ -54,8 +52,8 @@ traktApi.interceptors.response.use(
           );
           const { access_token, refresh_token } = tokenResponse.data;
           await Promise.all([
-            SecureStore.setItemAsync("trakt_access_token", access_token),
-            SecureStore.setItemAsync("trakt_refresh_token", refresh_token),
+            storage.setItem("trakt_access_token", access_token),
+            storage.setItem("trakt_refresh_token", refresh_token),
           ]);
           error.config.headers.Authorization = `Bearer ${access_token}`;
           return traktApi(error.config);
@@ -77,7 +75,7 @@ traktApi.interceptors.response.use(
 // Authentication functions
 export async function getAccessToken() {
   try {
-    return await SecureStore.getItemAsync("trakt_access_token");
+    return await storage.getItem("trakt_access_token");
   } catch (error) {
     return null;
   }
@@ -85,7 +83,7 @@ export async function getAccessToken() {
 
 export async function refreshTraktToken() {
   try {
-    const refreshToken = await SecureStore.getItemAsync("trakt_refresh_token");
+    const refreshToken = await storage.getItem("trakt_refresh_token");
     if (!refreshToken) throw new Error("No refresh token available");
 
     const response = await axios.post(`${TRAKT_API_URL}/oauth/token`, {
@@ -96,8 +94,8 @@ export async function refreshTraktToken() {
     });
     const { access_token, refresh_token: newRefreshToken } = response.data;
     await Promise.all([
-      SecureStore.setItemAsync("trakt_access_token", access_token),
-      SecureStore.setItemAsync("trakt_refresh_token", newRefreshToken),
+      storage.setItem("trakt_access_token", access_token),
+      storage.setItem("trakt_refresh_token", newRefreshToken),
     ]);
     console.log("⭐⭐ Trakt token refreshed successfully");
     return access_token;
@@ -138,14 +136,14 @@ export async function loginWithTrakt(
 
         // Store tokens
         await Promise.all([
-          SecureStore.setItemAsync("trakt_access_token", access_token),
-          SecureStore.setItemAsync("trakt_refresh_token", refresh_token),
+          storage.setItem("trakt_access_token", access_token),
+          storage.setItem("trakt_refresh_token", refresh_token),
         ]);
 
         // Fetch username from /users/me
         const userResponse = await traktApi.get("/users/me");
         const username = userResponse.data.username;
-        await SecureStore.setItemAsync("trakt_username", username);
+        await storage.setItem("trakt_username", username);
 
         return access_token;
       } catch (error: any) {
@@ -166,7 +164,7 @@ export async function loginWithTrakt(
 
 export async function logout() {
   try {
-    const accessToken = await SecureStore.getItemAsync("trakt_access_token");
+    const accessToken = await storage.getItem("trakt_access_token");
     if (accessToken) {
       try {
         await axios.post(`${TRAKT_API_URL}/oauth/revoke`, {
@@ -180,9 +178,9 @@ export async function logout() {
     }
 
     await Promise.all([
-      SecureStore.deleteItemAsync("trakt_access_token"),
-      SecureStore.deleteItemAsync("trakt_refresh_token"),
-      SecureStore.deleteItemAsync("trakt_username"),
+      storage.removeItem("trakt_access_token"),
+      storage.removeItem("trakt_refresh_token"),
+      storage.removeItem("trakt_username"),
     ]);
 
     return true;
@@ -194,7 +192,7 @@ export async function logout() {
 
 export async function isLoggedIn() {
   try {
-    const token = await SecureStore.getItemAsync("trakt_access_token");
+    const token = await storage.getItem("trakt_access_token");
     return !!token;
   } catch (error) {
     return false;
