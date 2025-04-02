@@ -6,6 +6,7 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { debounce } from 'lodash';
 import { FlashList } from '@shopify/flash-list';
 
+
 interface Movie {
     id: number;
     title: string;

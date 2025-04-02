@@ -43,6 +43,9 @@ export default {
       CLIENT_ID: process.env.CLIENT_ID,
       CLIENT_SECRET: process.env.CLIENT_SECRET,
       TMDB_API: process.env.TMDB_API,
+      PREMIUMIZE_CLIENT_ID: process.env.PREMIUMIZE_CLIENT_ID,
+      PREMIUMIZE_CLIENT_SECRET: process.env.PREMIUMIZE_CLIENT_SECRET,
+      SCRAPINGBEE_API_KEY: process.env.SCRAPINGBEE_API_KEY,
       eas: {
         projectId: process.env.PROJECT_ID
       }
