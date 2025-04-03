@@ -20,7 +20,7 @@ import MyLists from "../../components/listModal";
 import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
 import { FlashList } from "@shopify/flash-list";
-import { scrapeLinks, submitToPremiumize } from "@/components/scraper"; // Import from MagnetScraper
+import { scrapeLinks, submitToPremiumize } from "@/components/scraper";
 
 const { width, height } = Dimensions.get("window");
 const TMDB_API_KEY = Constants.expoConfig?.extra?.TMDB_API;
@@ -45,6 +45,29 @@ interface Episode {
   overview?: string;
 }
 
+// Define getImdbIdFromTmdb here, above the component
+const getImdbIdFromTmdb = async (tmdbId: number, type: "movie" | "show"): Promise<string | null> => {
+  try {
+    const endpoint = type === "movie" ? "movie" : "tv";
+    console.log("Fetching IMDb ID for TMDb ID:", tmdbId, "Type:", type);
+    const response = await axios.get(`${TMDB_BASE_URL}/${endpoint}/${tmdbId}`, {
+      params: {
+        api_key: TMDB_API_KEY,
+        append_to_response: "external_ids",
+      },
+    });
+    const imdbId = response.data.external_ids.imdb_id;
+    console.log(`Fetched IMDb ID: ${imdbId}`);
+    return imdbId || null;
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      console.error("TMDb Error:", err.message, err.response?.data);
+    } else {
+      console.error("TMDb Error:", err);
+    }    return null;
+  }
+};
+
 export default function ItemDetailsScreen() {
   const { id, type, title, listId } = useLocalSearchParams<{
     id: string;
@@ -57,7 +80,7 @@ export default function ItemDetailsScreen() {
   const [itemDetails, setItemDetails] = useState<ItemDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [scrapeLoading, setScrapeLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isInList, setIsInList] = useState(false);
   const [seasons, setSeasons] = useState<{ season_number: number }[]>([]);
@@ -70,11 +93,12 @@ export default function ItemDetailsScreen() {
       try {
         const response = await axios.get("https://jsonplaceholder.typicode.com/todos/1");
         console.log("Network Test Success:", response.data);
+        return () => {}; // Add cleanup function to satisfy EffectCallback type
       } catch (err) {
-        if (err instanceof Error) {
+        if (axios.isAxiosError(err)) {
           console.error("Network Test Error:", err.message);
         } else {
-          console.error("Network Test Error:", "An unknown error occurred");
+          console.error("Network Test Error:", err);
         }
       }
     };
@@ -100,9 +124,13 @@ export default function ItemDetailsScreen() {
           setSeasons(response.data.seasons.filter((s: any) => s.season_number > 0));
           setSelectedSeason(response.data.seasons[0]?.season_number || 1);
         }
-      } catch (err: any) {
-        console.error("Fetch Error:", err.message);
-        setError(err.message || "Failed to fetch item details");
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          console.error("Fetch Error:", err.message);
+          setError(err.message || "Failed to fetch item details");
+        } else {
+          console.error("Fetch Error:", err);
+        }
       } finally {
         setLoading(false);
       }
@@ -119,9 +147,13 @@ export default function ItemDetailsScreen() {
           `${TMDB_BASE_URL}/tv/${numericId}/season/${selectedSeason}?api_key=${TMDB_API_KEY}`
         );
         setEpisodes(response.data.episodes);
-      } catch (err: any) {
-        console.error("Error fetching episodes:", err);
-        setError("Failed to fetch episodes");
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          console.error("Error fetching episodes:", err.message);
+          setError("Failed to fetch episodes");
+        } else {
+          console.error("Error fetching episodes:", err);
+        }
       }
     };
     fetchEpisodes();
@@ -132,81 +164,88 @@ export default function ItemDetailsScreen() {
     setIsModalVisible(false);
     if (listId) {
       checkItemInLists(numericId, type)
-        .then(({ listIds }: { listIds: number[] }) => setIsInList(listIds.includes(parseInt(listId))))
-        .catch((err: any) => console.error("Error refreshing list status:", err));
+        .then(({ listIds }: { listIds: number[] }) =>
+          setIsInList(listIds.includes(parseInt(listId)))
+        )
+        .catch((err) => {
+          if (axios.isAxiosError(err)) {
+            console.error("Error refreshing list status:", err.message);
+          } else console.error("Error refreshing list status:", err);
+        });
     }
   };
 
-  const handleScrape = async (searchTerm: string) => {
+  const handleScrape = async (searchTerm: string, imdbId?: string) => {
+    console.log("handleScrape Called with:", { searchTerm, imdbId });
     setScrapeLoading(true);
-    const targetUrl = "https://example.com";
-    const links = await scrapeLinks(targetUrl);
-    setScrapeLoading(false);
+    setScrapeError(null);
+    const targetUrl = imdbId
+      ? `https://filepursuit.com/search/${imdbId}`
+      : `https://filepursuit.com/search/${encodeURIComponent(searchTerm)}`;
+    console.log("Constructed Target URL:", targetUrl);
+    try {
+      const links = await scrapeLinks(targetUrl);
+      console.log("Scrape Result:", links);
+      setScrapeLoading(false);
 
-    if (links.length > 0) {
-      Alert.alert(
-        "Links Found",
-        `Found ${links.length} Premiumize-supported links for "${searchTerm}". Submit to Premiumize?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Submit",
-            onPress: async () => {
-              for (const link of links) {
-                await submitToPremiumize(link);
-              }
-              Alert.alert("Success", "Links submitted to Premiumize!");
+      if (links.length > 0) {
+        Alert.alert(
+          "Links Found",
+          `Found ${links.length} Premiumize-supported links for "${searchTerm}". Submit to Premiumize?`,
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Submit",
+              onPress: async () => {
+                for (const link of links) {
+                  await submitToPremiumize(link);
+                }
+                Alert.alert("Success", "Links submitted to Premiumize!");
+              },
             },
-          },
-        ]
-      );
-    } else {
-      Alert.alert("No Links", `No Premiumize-supported links found for "${searchTerm}".`);
+          ]
+        );
+      } else {
+        setScrapeError(`No links found for "${searchTerm}".`);
+      }
+    } catch (err: any) {
+      setScrapeLoading(false);
+      setScrapeError("Network error while scraping. Please try again.");
+      if (axios.isAxiosError(err)) {
+        console.error("Scrape Handler Error:", err.message);
+      } else {
+        console.error("Scrape Handler Error:", err);
+      }
     }
   };
 
-  const handleMoviePress = () => {
+  const handleMoviePress = async () => {
+    console.log("Movie Pressed:", itemDetails?.title);
     if (itemDetails?.title) {
-      handleScrape(itemDetails.title);
+      const imdbId = await getImdbIdFromTmdb(numericId, type);
+      console.log("IMDb ID:", imdbId);
+      handleScrape(itemDetails.title, imdbId || undefined);
+    } else {
+      console.log("No title available");
     }
   };
 
-  const handleEpisodePress = (episode: Episode) => {
+  const handleEpisodePress = async (episode: Episode) => {
+    console.log("Episode Pressed:", episode.name);
     if (itemDetails?.title && selectedSeason) {
       const searchTerm = `${itemDetails.title} S${selectedSeason.toString().padStart(2, "0")}E${episode.episode_number.toString().padStart(2, "0")}`;
-      handleScrape(searchTerm);
+      const imdbId = await getImdbIdFromTmdb(numericId, type);
+      console.log("Search Term:", searchTerm, "IMDb ID:", imdbId);
+      handleScrape(searchTerm, imdbId || undefined);
+    } else {
+      console.log("Missing title or season");
     }
   };
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.loadingText}>Loading details...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
-    );
-  }
-
-  if (!itemDetails) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>No details available for {title}</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.mainContainer}>
       <ScrollView style={styles.scrollView}>
-        {itemDetails.backdropUrl && (
+        {itemDetails?.backdropUrl && (
           <Image
             source={{ uri: itemDetails.backdropUrl }}
             style={styles.backdropImage}
@@ -233,7 +272,7 @@ export default function ItemDetailsScreen() {
           <View style={styles.contentContainer}>
             <TouchableOpacity onPress={handleMoviePress} disabled={scrapeLoading}>
               <View style={styles.posterContainer}>
-                {itemDetails.posterUrl && (
+                {itemDetails?.posterUrl && (
                   <Image
                     source={{ uri: itemDetails.posterUrl }}
                     style={styles.posterImage}
@@ -243,16 +282,16 @@ export default function ItemDetailsScreen() {
               </View>
               <View style={styles.infoContainer}>
                 <Text style={styles.title}>{title}</Text>
-                {itemDetails.year && (
+                {itemDetails?.year && (
                   <Text style={styles.releaseDate}>Released: {itemDetails.year}</Text>
                 )}
-                {itemDetails.rating > 0 && (
-                  <Text style={styles.rating}>Rating: {itemDetails.rating.toFixed(1)}/10</Text>
+                {itemDetails?.rating && itemDetails.rating > 0 && (
+                  <Text style={styles.rating}>Rating: {itemDetails?.rating?.toFixed(1)}/10</Text>
                 )}
-                {itemDetails.genres && itemDetails.genres.length > 0 && (
+                {itemDetails?.genres && itemDetails.genres.length > 0 && (
                   <Text style={styles.genres}>Genres: {itemDetails.genres.join(", ")}</Text>
                 )}
-                {type === "show" && itemDetails.seasons && (
+                {type === "show" && itemDetails?.seasons && (
                   <Text style={styles.runtime}>Seasons: {itemDetails.seasons}</Text>
                 )}
                 {scrapeLoading && (
@@ -261,10 +300,12 @@ export default function ItemDetailsScreen() {
               </View>
             </TouchableOpacity>
 
-            <View style={styles.overviewContainer}>
-              <Text style={styles.overviewTitle}>Overview</Text>
-              <Text style={styles.overview}>{itemDetails.overview}</Text>
-            </View>
+            {itemDetails && (
+              <View style={styles.overviewContainer}>
+                <Text style={styles.overviewTitle}>Overview</Text>
+                <Text style={styles.overview}>{itemDetails.overview}</Text>
+              </View>
+            )}
 
             {type === "show" && episodes.length > 0 && (
               <View style={styles.seasonContainer}>
@@ -371,3 +412,7 @@ const styles = StyleSheet.create({
   episodeSubtitle: { fontSize: 14, color: "#A9A9A9", marginBottom: 5 },
   episodeOverview: { fontSize: 14, color: "white", marginBottom: 10 },
 });
+function setError(arg0: string) {
+  throw new Error("Function not implemented.");
+}
+

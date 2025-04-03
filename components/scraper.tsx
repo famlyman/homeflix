@@ -178,62 +178,75 @@ const PREMIUMIZE_SERVICES = {
 };
 
 export const scrapeLinks = async (targetUrl: string): Promise<string[]> => {
-    const SCRAPINGBEE_API_KEY = Constants.expoConfig?.extra?.SCRAPINGBEE_API_KEY as string;
-    console.log("ScrapingBee API Key:", SCRAPINGBEE_API_KEY || "Missing");
-    console.log("Scraping URL:", targetUrl);
-    try {
-      const response = await axios.get("https://api.scrapingbee.com", {
-        params: {
-          api_key: SCRAPINGBEE_API_KEY,
-          url: targetUrl,
-          render_js: true,
-          premium_proxy: false,
-        },
-        timeout: 30000, // 30-second timeout
-      });
-      console.log("ScrapingBee Response Status:", response.status);
-      console.log("Response Data Length:", response.data.length);
-      const html: string = response.data;
-      const foundLinks: string[] = [];
-      // ... regex logic ...
-      console.log("Found Links:", foundLinks);
-      return [...new Set(foundLinks)];
-    } catch (err) {
-      const error = err as any;
+  const SCRAPINGBEE_API_KEY = Constants.expoConfig?.extra?.scrapingBeeApiKey as string;
+  console.log("ScrapingBee API Key:", SCRAPINGBEE_API_KEY || "Missing");
+  console.log("Scraping URL:", targetUrl);
+  try {
+    const response = await axios.get("https://app.scrapingbee.com", {
+      params: {
+        api_key: SCRAPINGBEE_API_KEY,
+        url: targetUrl,
+        render_js: true,
+        premium_proxy: false,
+      },
+      timeout: 60000,
+    });
+    console.log("ScrapingBee Response Status:", response.status);
+    console.log("Response Data Length:", response.data.length);
+    const html: string = response.data;
+    console.log("HTML Snippet:", html.substring(0, 500)); // Debug content
 
-      console.error("Scraping Error Details:", {
-        message: error.message,
-        code: error.code,
-        config: error.config, // Log the full request config
-        response: error.response ? { status: error.response.status, data: error.response.data } : "No response",
-      });
-      return [];
+    // Regex for Premiumize-supported hosts
+    const linkRegex = /(https?:\/\/(?:www\.)?(mega\.nz|1fichier\.com|rapidgator\.net|uploaded\.net|filefactory\.com|turbobit\.net|zippyshare\.com|mediafire\.com)\/[^\s"']+)/gi;
+    const foundLinks: string[] = [];
+    let match;
+    while ((match = linkRegex.exec(html)) !== null) {
+      foundLinks.push(match[0]);
     }
-  };
-  
-  export const submitToPremiumize = async (link: string) => {
-    const PREMIUMIZE_CLIENT_ID = Constants.expoConfig?.extra?.PREMIUMIZE_CLIENT_ID as string;
-    try {
-      const response = await axios.post(
-        "https://www.premiumize.me/api/transfer/direct/create",
-        { src: link, apikey: PREMIUMIZE_CLIENT_ID },
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-      );
-      console.log(`Submitted ${link} to Premiumize:`, response.data);
-      return response.data;
-    } catch (error) {
-      const err = error as any;
-      console.error("Premiumize error:", err.message);
-      return null;
+
+    console.log("Found Links:", foundLinks);
+    return [...new Set(foundLinks)];
+  } catch (err) {
+    const error = err as any;
+    console.error("Scraping Error Details:", {
+      message: error.message,
+      code: error.code,
+      config: error.config,
+      response: error.response ? { status: error.response.status, data: error.response.data } : "No response",
+    });
+    return [];
+  }
+};
+
+export const submitToPremiumize = async (link: string) => {
+  const PREMIUMIZE_API_KEY = Constants.expoConfig?.extra?.premiumizeApiKey as string;
+  try {
+    const response = await axios.post(
+      "https://www.premiumize.me/api/transfer/direct/create",
+      { src: link, apikey: PREMIUMIZE_API_KEY },
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+    console.log(`Submitted ${link} to Premiumize:`, response.data);
+    return response.data;
+  } catch (err) {
+    const error = err as any;
+    if (axios.isAxiosError(error)) {
+      console.error("Premiumize Error:", error.message);
+    } else if (error instanceof Error) {
+      console.error("Premiumize Error:", error.message);
+    } else {
+      console.error("Premiumize Error:", error);
     }
-  };
+    return null;
+  }
+};
   
   const MagnetScraper = () => {
     const [links, setLinks] = useState<string[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
   
-    const handleScrapeAndSubmit = async (targetUrl: string = "https://rlsbb.in") => {
+    const handleScrapeAndSubmit = async (targetUrl: string = "https://sanet.st") => {
       setLoading(true);
       setError(null);
       const foundLinks = await scrapeLinks(targetUrl);
