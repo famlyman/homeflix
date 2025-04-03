@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, Button, StyleSheet, FlatList } from "react-native";
 import axios from "axios";
+import { load } from "react-native-cheerio";
 import Constants from "expo-constants";
 
 // Define the structure of regexpatterns
@@ -178,42 +179,67 @@ const PREMIUMIZE_SERVICES = {
 };
 
 export const scrapeLinks = async (targetUrl: string): Promise<string[]> => {
-  const SCRAPINGBEE_API_KEY = Constants.expoConfig?.extra?.SCRAPINGBEE_API_KEY as string;
-  console.log("ScrapingBee API Key:", SCRAPINGBEE_API_KEY || "Missing");
   console.log("Scraping URL:", targetUrl);
   try {
-    const response = await axios.get("https://app.scrapingbee.com", {
-      params: {
-        api_key: SCRAPINGBEE_API_KEY,
-        url: targetUrl,
-        render_js: true,
-        premium_proxy: false,
-      },
-      timeout: 60000,
-    });
-    console.log("ScrapingBee Response Status:", response.status);
-    console.log("Response Data Length:", response.data.length);
-    const html: string = response.data;
-    console.log("HTML Snippet:", html.substring(0, 500)); // Debug content
+    // Step 1: Fetch the search page
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    };
+    const response = await axios.get(targetUrl, { headers, timeout: 30000 });
+    console.log("Search Page Status:", response.status);
+    console.log("Search Page Snippet (start):", response.data.substring(0, 500));
+    console.log("Search Page Snippet (end):", response.data.substring(response.data.length - 500));
 
-    // Regex for Premiumize-supported hosts
-    const linkRegex = /(https?:\/\/(?:www\.)?(mega\.nz|1fichier\.com|rapidgator\.net|uploaded\.net|filefactory\.com|turbobit\.net|zippyshare\.com|mediafire\.com)\/[^\s"']+)/gi;
-    const foundLinks: string[] = [];
-    let match;
-    while ((match = linkRegex.exec(html)) !== null) {
-      foundLinks.push(match[0]);
+    const html = response.data;
+    const $ = load(html);
+
+    // Step 2: Extract sanet.st post links
+    const postLinks: string[] = [];
+    $("h2.entry-title a").each((_: any, element: any) => {
+      const href = $(element).attr("href");
+      if (href && href.includes("blogs")) {
+        postLinks.push(href.startsWith("http") ? href : `https://sanet.st${href}`);
+      }
+    });
+    console.log("Found Post Links:", postLinks);
+
+    // Step 3: Scrape up to 3 posts for download links
+    const downloadLinks: string[] = [];
+    const supportedHosts = [
+      "mega.nz", "1fichier.com", "rapidgator.net", "uploaded.net",
+      "filefactory.com", "turbobit.net", "zippyshare.com", "mediafire.com",
+      "file.io", "sendspace.com",
+    ];
+
+    for (const postUrl of postLinks.slice(0, 3)) {
+      console.log("Scraping Post URL:", postUrl);
+      const postResponse = await axios.get(postUrl, { headers, timeout: 30000 });
+      const postHtml = postResponse.data;
+      const $post = load(postHtml);
+
+      $post("a[href]").each((_: any, element: any) => {
+        const href = $post(element).attr("href");
+        if (href && supportedHosts.some(host => href.includes(host))) {
+          downloadLinks.push(href);
+        }
+      });
     }
 
-    console.log("Found Links:", foundLinks);
-    return [...new Set(foundLinks)];
+    console.log("Found Download Links:", downloadLinks);
+    return [...new Set(downloadLinks)];
   } catch (err) {
-    const error = err as any;
-    console.error("Scraping Error Details:", {
-      message: error.message,
-      code: error.code,
-      config: error.config,
-      response: error.response ? { status: error.response.status, data: error.response.data } : "No response",
-    });
+    if (axios.isAxiosError(err)) {
+      console.error("Scraping Error Details:", {
+        message: err.message,
+        code: err.code,
+        config: err.config,
+        response: err.response ? { status: err.response.status, data: err.response.data } : "No response",
+      });
+    } else if (err instanceof Error) {
+      console.error("Scraping Error:", err.message);
+    } else {
+      console.error("Unknown Scraping Error:", err);
+    }
     return [];
   }
 };
@@ -229,13 +255,12 @@ export const submitToPremiumize = async (link: string) => {
     console.log(`Submitted ${link} to Premiumize:`, response.data);
     return response.data;
   } catch (err) {
-    const error = err as any;
-    if (axios.isAxiosError(error)) {
-      console.error("Premiumize Error:", error.message);
-    } else if (error instanceof Error) {
-      console.error("Premiumize Error:", error.message);
+    if (axios.isAxiosError(err)) {
+      console.error("Premiumize Error:", err.message, err.response?.data);
+    } else if (err instanceof Error) {
+      console.error("Premiumize Error:", err.message);
     } else {
-      console.error("Premiumize Error:", error);
+      console.error("Premiumize Error:", err);
     }
     return null;
   }

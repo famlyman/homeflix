@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import * as React from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,11 +13,11 @@ import {
   Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { fetchItemDetails } from "../../services/tmdb-trakt";
+import { fetchItemDetails } from "@/services/tmdb-trakt";
 import Constants from "expo-constants";
-import { checkItemInLists } from "../../services/traktapi";
+import { checkItemInLists } from "@/services/traktapi";
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
-import MyLists from "../../components/listModal";
+import MyLists from "@/components/listModal";
 import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
 import { FlashList } from "@shopify/flash-list";
@@ -179,10 +180,7 @@ export default function ItemDetailsScreen() {
     console.log("handleScrape Called with:", { searchTerm, imdbId });
     setScrapeLoading(true);
     setScrapeError(null);
-    const targetUrl = imdbId
-  ? `https://sanet.st/search/${imdbId}`
-  : `https://sanet.st/search/${encodeURIComponent(searchTerm)}`;
-    console.log("Constructed Target URL:", targetUrl);
+    const targetUrl = `https://oneddl.net/search/${encodeURIComponent(searchTerm)}`;
     try {
       const links = await scrapeLinks(targetUrl);
       console.log("Scrape Result:", links);
@@ -236,7 +234,44 @@ export default function ItemDetailsScreen() {
       const searchTerm = `${itemDetails.title} S${selectedSeason.toString().padStart(2, "0")}E${episode.episode_number.toString().padStart(2, "0")}`;
       const imdbId = await getImdbIdFromTmdb(numericId, type);
       console.log("Search Term:", searchTerm, "IMDb ID:", imdbId);
-      handleScrape(searchTerm, imdbId || undefined);
+      
+      setScrapeLoading(true);
+      setScrapeError(null);
+      const targetUrl = imdbId
+        ? `https://sanet.st/search/${imdbId}`
+        : `https://sanet.st/search/${encodeURIComponent(searchTerm)}`;
+      console.log("Constructed Target URL:", targetUrl);
+  
+      try {
+        const links = await scrapeLinks(targetUrl);
+        console.log("Scrape Result:", links);
+        setScrapeLoading(false);
+  
+        if (links.length > 0) {
+          Alert.alert(
+            "Links Found",
+            `Found ${links.length} links for "${searchTerm}". Submit to Premiumize?`,
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Submit",
+                onPress: async () => {
+                  for (const link of links) {
+                    await submitToPremiumize(link);
+                  }
+                  Alert.alert("Success", "Links submitted to Premiumize!");
+                },
+              },
+            ]
+          );
+        } else {
+          setScrapeError(`No links found for "${searchTerm}".`);
+        }
+      } catch (err) {
+        setScrapeLoading(false);
+        setScrapeError("Error scraping links.");
+        console.error("Scrape Error:", err);
+      }
     } else {
       console.log("Missing title or season");
     }
@@ -415,4 +450,3 @@ const styles = StyleSheet.create({
 function setError(arg0: string) {
   throw new Error("Function not implemented.");
 }
-
