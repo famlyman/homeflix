@@ -180,8 +180,8 @@ export default function ItemDetailsScreen() {
     setScrapeLoading(true);
     setScrapeError(null);
     const targetUrl = imdbId
-      ? `https://filepursuit.com/search/${imdbId}`
-      : `https://filepursuit.com/search/${encodeURIComponent(searchTerm)}`;
+  ? `https://sanet.st/search/${imdbId}`
+  : `https://sanet.st/search/${encodeURIComponent(searchTerm)}`;
     console.log("Constructed Target URL:", targetUrl);
     try {
       const links = await scrapeLinks(targetUrl);

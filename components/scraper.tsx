@@ -178,7 +178,7 @@ const PREMIUMIZE_SERVICES = {
 };
 
 export const scrapeLinks = async (targetUrl: string): Promise<string[]> => {
-  const SCRAPINGBEE_API_KEY = Constants.expoConfig?.extra?.scrapingBeeApiKey as string;
+  const SCRAPINGBEE_API_KEY = Constants.expoConfig?.extra?.SCRAPINGBEE_API_KEY as string;
   console.log("ScrapingBee API Key:", SCRAPINGBEE_API_KEY || "Missing");
   console.log("Scraping URL:", targetUrl);
   try {
